@@ -1,6 +1,6 @@
 # ShinyAppENSCM
 
-This repository contains a shiny app that I developed in the context of my Master's degree thesis in statistical analysis at the university of Montpellier during the 2022/2023 shcool year. This app is supposed to help visualize the data that I worked with during my time as an apprentice at the Ecole supérieure nationale de chimie de Montpellier (ENSCM). 
+This repository contains a shiny app that I developed in the context of my Master's degree thesis in statistical analysis at the university of Montpellier during the 2022/2023 school year. This app is designed to help visualize the data that I worked with during my time as an apprentice at the Ecole supérieure nationale de chimie de Montpellier (ENSCM). 
 
 ## The data
 

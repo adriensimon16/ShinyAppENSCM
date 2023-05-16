@@ -9,19 +9,26 @@
 
 library(shiny)
 
+data<-read.csv2("E_Tous_Anonymat.csv",header=FALSE, stringsAsFactors=FALSE, fileEncoding="latin1")
+
+colnames(data) = data[1,]
+
+data<-data[2:length(data[,1]),]
+data[,3]<-as.numeric(data[,3])
+data[,70]<-as.numeric(data[,70])
+
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
 
     output$distPlot <- renderPlot({
 
         # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
+        x    <- as.numeric(data[,65])
 
         # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white',
-             xlab = 'Waiting time to next eruption (in mins)',
-             main = 'Histogram of waiting times')
+        hist(x, col = 'darkgray', border = 'white',
+             xlab = 'sex',
+             main = 'Histogram of the repartition of Sex')
 
     })
 
