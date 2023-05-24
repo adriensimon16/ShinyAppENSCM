@@ -18,9 +18,9 @@ shinyUI(fluidPage(
     # Sidebar with a slider input for number of bins
     sidebarLayout(
         sidebarPanel(
-            selectInput("varaible", "Année d'enquête:",choices = c(2018,2019,2020,2021,2022))
-        ),
-
+            selectInput("Year", "Année d'enquête:",choices = as.numeric(c(2018,2019,2020,2021,2022))),
+            selectInput("varaible", "Variable:",choices = list("Parité","Filière",""))
+         ),
         # Show a plot of the generated distribution
         mainPanel(
             plotOutput("distPlot")
