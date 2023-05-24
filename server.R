@@ -8,6 +8,7 @@
 #
 
 library(shiny)
+library(ggplot2)
 
 data<-read.csv2("E_Tous_Anonymat.csv",header=FALSE, stringsAsFactors=FALSE, fileEncoding="latin1")
 
@@ -23,12 +24,14 @@ shinyServer(function(input, output) {
     output$distPlot <- renderPlot({
 
         # generate bins based on input$bins from ui.R
-        x    <- as.numeric(data[,65])
-
+        
+        if(input$varaible=="Parité"){colonne<-data[,2,data[,3]==input$Year]}
+        if(input$varaible=="Filière"){colonne<-data[,71,data[,3]==input$Year]}
+        #hist(table(colonne))
         # draw the histogram with the specified number of bins
-        hist(x, col = 'darkgray', border = 'white',
-             xlab = 'sex',
-             main = 'Histogram of the repartition of Sex')
+      ggplot(data=data)+
+        geom_histogram(mapping = aes(x=colonne),stat = "count",linetype = 7, color="black", fill="lightblue")+
+        theme_classic()
 
     })
 
