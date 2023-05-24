@@ -1,3 +1,17 @@
+
+library(shiny)
+library(data.table)
+
+data<- read.csv2("https://raw.githubusercontent.com/adriensimon16/ShinyAppENSCM/main/E_Tous_Anonymat.csv",header=FALSE, stringsAsFactors=FALSE, fileEncoding="latin1")
+colnames(data) = data[1,]
+
+data<-data[2:length(data[,1]),]
+data[,3]<-as.numeric(data[,3])
+data[,70]<-as.numeric(data[,70])
+
+data<-data.table(data)
+
+
 ui<-fluidPage(
   
   headerPanel("Presentation of the variables"),
