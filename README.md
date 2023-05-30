@@ -17,7 +17,7 @@ install.packages("data.table")
 
 ## The data
 
-The data that is being used in this app is the compiled answers of the school's alumni to it's yearly survey. Every year the graduates from up to five years prior are being surveyed. For instance the 2022 survey contains answers of alumni from the 2017 to 2021 promotions. All the data is anonymous.
+The data that is being used in this app is the compiled answers of the school's alumni to it's yearly survey. Every year the graduates from up to five years prior are being surveyed. For instance the 2022 survey contains answers of alumni from the 2017 to 2020 promotions. All the data is anonymous.
 
 ## The app
 
