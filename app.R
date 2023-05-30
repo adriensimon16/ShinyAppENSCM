@@ -15,7 +15,7 @@ data<-data.table(data)
 
 ui<-fluidPage(
   
-  headerPanel(""),
+  headerPanel("Data Visualization"),
   
   sidebarPanel(
     selectInput("year", "Graduation year", names(table(data$`14. AnneeDiplomeVerifieParLeDiplome`))),
