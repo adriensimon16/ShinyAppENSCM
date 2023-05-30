@@ -11,7 +11,7 @@ data[,3]<-as.numeric(data[,3])
 data[,70]<-as.numeric(data[,70])
 
 data<-data.table(data)
-
+data<-replace(data, data=="",NA)
 
 ui<-fluidPage(
   
@@ -19,7 +19,7 @@ ui<-fluidPage(
   
   sidebarPanel(
     selectInput("year", "Graduation year", names(table(data$`14. AnneeDiplomeVerifieParLeDiplome`))),
-    selectInput("variable", "Variable of interest",choices = names(data[,c(2,4,71)]) ),
+    selectInput("variable", "Variable of interest",choices = names(data[,c(2,4,6,11,36,71,72)]) ),
     numericInput("plus", "Number of years after graduation", value = 1, min = 1, max = 2, step = 1)
   ),
   
