@@ -1,6 +1,6 @@
 # ShinyAppENSCM
 
-This repository contains a shiny app that I developed in the context of my Master's degree thesis in statistical analysis at the university of Montpellier during the 2022/2023 school year. This app is designed to help visualize the data that I worked with during my time as an apprentice at the Ecole supérieure nationale de chimie de Montpellier (ENSCM). The repository also contains a folder named "Questionnaire enquête d'insertion professionnelle" with the questions that make up the survey for occupational integration of the ENSCM's alumni.
+This repository contains a shiny app that I developed in the context of my Master's degree thesis in statistical analysis at the university of Montpellier during the 2022/2023 school year. This app is designed to help visualize the data that I worked with during my time as an apprentice at the Ecole supérieure nationale de chimie de Montpellier (ENSCM). The repository also contains two other folders. The first being named "Questionnaire enquête d'insertion professionnelle" with the questions that make up the survey for occupational integration of the ENSCM's alumni. The second one being called "Code R étude statistique de l'insertion professionnelle" containing the script in R code which was used to conduct the statistical analysis of the occupational integration of the school's alumni. The code is ready to be used as is, you'll simply need to install the loaded packages if this is not already the case. Notably, ```FactoMineR``` and ```factoextra```. 
 
 ## Packages needed
 
