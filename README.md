@@ -6,13 +6,13 @@ This repository contains a shiny app that I developed in the context of my Maste
 
 In order to run this app, you will need to have the following R packages installed : Shiny, RColorBrewer and data.table. If you are missing one or more of these packages you can install them by running the following code : 
 
-Shiny :
+```Shiny``` :
 install.packages("shiny")
 
-RColorBrewer:
+```RColorBrewer```:
 install.packages("RColorBrewer")
 
-data.table :
+```data.table``` :
 install.packages("data.table")
 
 ## The data
