@@ -1,0 +1,524 @@
+---
+title: "CodeR Memoire"
+author: "Adrien Simon"
+date: "2023-06-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Chargement des packages
+```{r}
+library(shiny)
+library(data.table)
+library(RColorBrewer)
+library(ggplot2)
+library(MASS)
+library(FactoMineR)
+library(factoextra)
+```
+
+
+
+
+
+Data <- dataframe brut se trouvant sur github (le même qui est utilisé pour l'application shiny)
+```{r}
+   data<- read.csv2("https://raw.githubusercontent.com/adriensimon16/ShinyAppENSCM/main/Enquete_tous.csv",sep = ",",header=FALSE, stringsAsFactors=FALSE, fileEncoding="UTF-8")
+colnames(data) = data[1,]
+data<-data[2:length(data[,1]),]
+data[,3]<-as.numeric(data[,3])
+data[,65]<-as.numeric(data[,65])
+   
+data<-data.table(data)
+data<-replace(data, data=="",NA)
+```
+
+
+On fait une première séléction des variables pour l'ACM dans un dataframe "datax" pour quand même conserver les données butes disponibles dans "data". Nous faisons également ici les modifications des modalités qui le nécessitent après avoir étudié ces variables grâce à l'application shiny.
+```{r}
+datax<-data[,c(1,2,3,4,6,8,9,10,12,13,14,15,16,27,30,31,32,38,52,61,65,66,67)]
+datax[datax$`15. ActiviteActuelle`=="En thèse / PhD",4]<-"En thèse"
+datax$`32. EmploiContrat`[datax$`15. ActiviteActuelle`=="En thèse"]<-"CDD"
+datax$`15. ActiviteActuelle`[datax$`15. ActiviteActuelle`=="En poursuite d'études (hors thèse)" | datax$`15. ActiviteActuelle`=="Autres situations" | datax$`15. ActiviteActuelle`=="Sans activité volontairement" | datax$`15. ActiviteActuelle`=="En études / En formation"]<-"Autres situations"
+datax$`264. Option_ScolariteFiliereFormation`[datax$`264. Option_ScolariteFiliereFormation`=="Erasmus (étranger)" | datax$`264. Option_ScolariteFiliereFormation`=="Autre Autre Ecole de la FGL" ]<-"Autre (Erasmus,...)"
+datax$`69. EmploiCommentTrouve`[datax$`69. EmploiCommentTrouve`=="Candidature spontanée" | datax$`69. EmploiCommentTrouve`=="Concours" | datax$`69. EmploiCommentTrouve`=="Forum de votre école" | datax$`69. EmploiCommentTrouve`=="Service Emploi de votre Ecole" | datax$`69. EmploiCommentTrouve` == "Démarché(e) par un \"chasseur de têtes\"" | datax$`69. EmploiCommentTrouve`== "Réseau des anciens élèves" | datax$`69. EmploiCommentTrouve` == "Autre" ]<-"Emploi trouvé autrement"
+datax$`69. EmploiCommentTrouve`[datax$`69. EmploiCommentTrouve`=="Sites Internet d'entreprises"]<-"Site Internet spécialisé dans l'emploi"
+
+a<-rownames(table(datax$`48. EmploiEntrepriseSecteurActivite`))
+datax$`32. EmploiContrat`[!is.na(datax$`32. EmploiContrat`) & datax$`32. EmploiContrat` != "CDD" & datax$`32. EmploiContrat`!="CDI"]<-"Autre"
+datax$`48. EmploiEntrepriseSecteurActivite`[datax$`48. EmploiEntrepriseSecteurActivite` %in% a[c(25,32)]]<-"Métiers de la santé"
+datax$`48. EmploiEntrepriseSecteurActivite`[datax$`48. EmploiEntrepriseSecteurActivite` %in% a[c(13,14,31)]]<-"Recherche scientifique"
+datax$`48. EmploiEntrepriseSecteurActivite`[datax$`48. EmploiEntrepriseSecteurActivite` %in% a[c(15,20,22,23,29,30)]]<-"Métiers de la chimie"
+datax$`48. EmploiEntrepriseSecteurActivite`[datax$`48. EmploiEntrepriseSecteurActivite` %in% a[c(1,2,3,4,5,6,7,8,9,10,11,24,27,28,33,34,35)]]<-"Autres Métiers"
+datax$`48. EmploiEntrepriseSecteurActivite`[datax$`48. EmploiEntrepriseSecteurActivite` %in% a[c(16,17,18,19,21,26)]]<-"Métiers des matériaux"
+datax$`48. EmploiEntrepriseSecteurActivite`[datax$`48. EmploiEntrepriseSecteurActivite` %in% a[12]]<-"Métiers de l'énergie"
+```
+
+
+Remplissage des NA dont on connait la vraie valeur (Filière -> option)
+```{r}
+#Correction des options/filières
+for (i in (1:nrow(datax[,22]))) {
+  if(!is.na(datax[i,22])){
+   if(datax[i,22]=="CBD2") {datax[i,23]="Chimie-Matériaux-Environnement"}
+   if(datax[i,22]=="CNE"){datax[i,23]="Chimie-Matériaux-Environnement"}
+   if(datax[i,22]=="DGE"){datax[i,23]="Chimie-Matériaux-Environnement"}
+   if(datax[i,22]=="MAT") {datax[i,23]="Chimie-Matériaux-Environnement"}
+   if(datax[i,22]=="Autre"){datax[i,23]="Autre"} 
+   if(datax[i,22]=="CBS"){datax[i,23]="Chimie-Santé"} 
+   if(datax[i,22]=="COF"){datax[i,23]="Chimie-Santé"} 
+   if(datax[i,22]=="IPAN"){datax[i,23]="Chimie-Santé"}
+  }
+}
+
+```
+
+
+
+
+On crée un dataframe "Data_1a" qui ne contient que les informations des individus à un an après diplômation
+```{r}
+
+
+x1<-rep(NA,nrow(datax[,1]))
+x2<-rep(NA,nrow(datax[,1]))
+x3<-rep(NA,nrow(datax[,1]))
+x4<-rep(NA,nrow(datax[,1]))
+x5<-rep(NA,nrow(datax[,1]))
+x6<-rep(NA,nrow(datax[,1]))
+x7<-rep(NA,nrow(datax[,1]))
+x8<-rep(NA,nrow(datax[,1]))
+x9<-rep(NA,nrow(datax[,1]))
+x10<-rep(NA,nrow(datax[,1]))
+x11<-rep(NA,nrow(datax[,1]))
+x12<-rep(NA,nrow(datax[,1]))
+x13<-rep(NA,nrow(datax[,1]))
+x14<-rep(NA,nrow(datax[,1]))
+x15<-rep(NA,nrow(datax[,1]))
+x16<-rep(NA,nrow(datax[,1]))
+# x17<-rep(NA,length(datax[,1]))
+
+
+
+
+for (i in (1:nrow(datax[,1]))) {
+  if(datax$`14. AnneeDiplomeVerifieParLeDiplome`[i]==(datax$`249. AnneeEnquete`[i])-1){
+    x1[i]<-datax$`15. ActiviteActuelle`[i]
+    x2[i]<-datax$`28. EmploiLieuPaysTerritoire`[i]
+    x3[i]<-datax$`32. EmploiContrat`[i]
+    x4[i]<-datax$`35. EmploiCadre`[i]
+    x5[i]<-datax$`36. EmploiTempsPleinPartiel`[i]
+    x6[i]<-datax$`45. EmploiEntrepriseTaille`[i]
+    x7[i]<-datax$`48. EmploiEntrepriseSecteurActivite`[i]
+    x8[i]<-datax$`51. EmploiEntrepriseService`[i]
+    x9[i]<-datax$`53. EmploiEntreprisePoste`[i]
+    x10[i]<-datax$`54. EmploiResponsabilitesHierarchiques`[i]
+    x11[i]<-datax$`69. EmploiCommentTrouve`[i]
+    x12[i]<-datax$`78. EmploiAdequationNiveauQualification`[i]
+    x13[i]<-datax$`79. EmploiAdequationSecteurDisciplinaire`[i]
+    x14[i]<-datax$`80. EmploiSatisfaction`[i]
+    x15[i]<-datax$`86. EmploiChercheAutreEmploi`[i]
+    x16[i]<-datax$`177. LieuTravail_FranceEtranger`[i]
+}
+}
+Data_1a<-cbind(datax$Anonymisation,datax$`4. SexeVerifieParLeDiplome`, datax$`14. AnneeDiplomeVerifieParLeDiplome`,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,x16)
+```
+
+
+On crée un dataframe "Data_2a" qui ne contient que les informations des individus à deux ans après diplômation
+```{r}
+
+
+x1<-rep(NA,nrow(datax[,1]))
+x2<-rep(NA,nrow(datax[,1]))
+x3<-rep(NA,nrow(datax[,1]))
+x4<-rep(NA,nrow(datax[,1]))
+x5<-rep(NA,nrow(datax[,1]))
+x6<-rep(NA,nrow(datax[,1]))
+x7<-rep(NA,nrow(datax[,1]))
+x8<-rep(NA,nrow(datax[,1]))
+x9<-rep(NA,nrow(datax[,1]))
+x10<-rep(NA,nrow(datax[,1]))
+x11<-rep(NA,nrow(datax[,1]))
+x12<-rep(NA,nrow(datax[,1]))
+x13<-rep(NA,nrow(datax[,1]))
+x14<-rep(NA,nrow(datax[,1]))
+x15<-rep(NA,nrow(datax[,1]))
+x16<-rep(NA,nrow(datax[,1]))
+# x17<-rep(NA,length(datax[,1]))
+
+
+
+
+for (i in (1:nrow(datax[,1]))) {
+  if(datax$`14. AnneeDiplomeVerifieParLeDiplome`[i]==(datax$`249. AnneeEnquete`[i])-2){
+    x1[i]<-datax$`15. ActiviteActuelle`[i]
+    x2[i]<-datax$`28. EmploiLieuPaysTerritoire`[i]
+    x3[i]<-datax$`32. EmploiContrat`[i]
+    x4[i]<-datax$`35. EmploiCadre`[i]
+    x5[i]<-datax$`36. EmploiTempsPleinPartiel`[i]
+    x6[i]<-datax$`45. EmploiEntrepriseTaille`[i]
+    x7[i]<-datax$`48. EmploiEntrepriseSecteurActivite`[i]
+    x8[i]<-datax$`51. EmploiEntrepriseService`[i]
+    x9[i]<-datax$`53. EmploiEntreprisePoste`[i]
+    x10[i]<-datax$`54. EmploiResponsabilitesHierarchiques`[i]
+    x11[i]<-datax$`69. EmploiCommentTrouve`[i]
+    x12[i]<-datax$`78. EmploiAdequationNiveauQualification`[i]
+    x13[i]<-datax$`79. EmploiAdequationSecteurDisciplinaire`[i]
+    x14[i]<-datax$`80. EmploiSatisfaction`[i]
+    x15[i]<-datax$`86. EmploiChercheAutreEmploi`[i]
+    x16[i]<-datax$`177. LieuTravail_FranceEtranger`[i]
+}
+}
+Data_2a<-cbind(datax$Anonymisation,datax$`4. SexeVerifieParLeDiplome`, datax$`14. AnneeDiplomeVerifieParLeDiplome`,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,x16)
+```
+
+
+Ensuite nous allons corriger Data_2a pour qu'un individu n'apparaisse que sur une seule et même ligne (par rapport à Data_1a). Enfin nous combinons Data_1a et Data_2a en un dataframe final qui nous serivra pour l'analyse statistique. On ne conserve dans dataFinal que les individus ayant répondu aux deux années d'enquêtes successives qui ont suivi l'obtention de leur diplôme.
+```{r}
+for (i in 1:(nrow(datax[,1])-1)) {
+  if(Data_1a[i,1]==Data_2a[i+1,1] & !is.na(Data_2a[i+1,4])){
+    Data_2a[i,]<-Data_2a[i+1,]
+}
+}
+
+dataFinal<-cbind(datax$Anonymisation, datax$`4. SexeVerifieParLeDiplome`, datax$`14. AnneeDiplomeVerifieParLeDiplome`)
+for (i in 4:length(Data_2a[1,])) {
+  dataFinal<-cbind(dataFinal,Data_1a[,i],Data_2a[,i])
+}
+
+dataFinal<-cbind(dataFinal,datax$`151. Option_ScolariteCesure`,datax$`249. AnneeEnquete`,datax$`264. Option_ScolariteFiliereFormation`,datax$`265. Option_ScolariteSpecialisation`)
+
+colnames(dataFinal)<-c("Anonymat","Sexe","Annee Diplome","1a.ActiviteActuelle","2a.ActiviteActuelle","1a.PaysActivite","2a.PaysActivite","1a.ContratType","2a.ContratType","1a.Cadre","2a.Cadre","1a.Régime","2a.Régime","1a.EntrepriseTaille","2a.EntrepriseTaille","1a.SecteurEntreprise","2a.SecteurEntreprise","1a.EntrepriseService","2a.EntrepriseService","1a.IntitulePoste","2a.IntitulePoste","1a.Responsabilités","2a.Responsabilités","1a.MethodeEmbauche","2a.MethodeEmbauche","1a.AdéquationQualifications","2a.AdéquationQualifications","1a.AdéquationSecteur","2a.AdéquationSecteur","1a.SatisfactionEmploi","2a.SatisfactionEmploi","1a.ChangerEmploi","2a.ChangerEmploi","1a.TravailPays","2a.TravailPays","Césure","AnneEnquête","Filière Formation", "Option Formation")
+
+dataFinal<-dataFinal[is.na(dataFinal[,4])==F,]
+dataFinal<-dataFinal[is.na(dataFinal[,5])==F,]
+
+```
+
+
+
+```{r}
+
+barplot(height = table(datax[,4]), space = 1, ylim = c(0,(max(table(datax[,4]))*1.5)), ylab = "Nombre total de répondants", xlab = "Activité actuelle",legend.text = names(table(datax[,4])),col = brewer.pal(n=length(table(datax[,4])), "Blues"))
+       box()
+barplot(height = table(datax[,22]), space = 1, ylim = c(0,(max(table(datax[,22]))*1.5)), ylab = "Nombre total de répondants", xlab = "Filière de formation",col = brewer.pal(n=length(table(datax[,22])), "RdYlBu"))
+       box()
+```
+
+
+#########################################################################################################################################################
+
+
+Premiere ACM.
+
+Variables (1a et 2a) : Activité actuelle, Contrat Type, Cadre, Régime (temps plein/partiel), Entreprise taille, Secteur entrerpise, Responsabilités, méthode embauche, adéquation qualification, satisfaction emploi, changer emploi, travail pays, césure.
+
+Variables quali sup: Sexe, année diplôme, Filière, option
+
+
+
+```{r}
+results.mcaTous<-MCA(dataFinal[,c(2:5,8:17,22:27,30:36,38,39)],quali.sup = c(1,2), ncp= 5)
+fviz_mca_biplot (results.mcaTous, repel = TRUE, geom =c("point"), col.ind = "blue", alpha.ind = "cos2", alpha.var = 0.4,
+               ggtheme = theme_minimal())
+
+
+```
+
+Plot des individus
+```{r}
+fviz_mca_ind(results.mcaTous, geom = "point",habillage = 2, alpha.ind = "cos2")
+```
+
+
+
+Plot des variables
+```{r}
+fviz_mca_var(results.mcaTous, geom = c("point","text"),invisible = "quali.sup", select.var = list(contrib=10),repel = T,col.var = "contrib",gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+#enlever les variables a cos2 faible 
+```
+
+
+Premiere valeur propre et coordonnées au carrés des modalités la dépassant 
+```{r}
+#valeur propre du premier axe :
+results.mcaTous$eig[2]
+
+#cordonnées au carré des modalités sur l'axe 1 dépassant sa valeur propre :
+sort(results.mcaTous$var$coord[results.mcaTous$var$coord[,1]^2 > results.mcaTous$eig[1],1])
+
+
+```
+
+```{r}
+fviz_screeplot (results.mcaTous, addlabels = TRUE, ylim = c (0, 25))
+```
+
+
+
+HCPC sur la première acm :
+
+```{r}
+
+results.hcpcTous <- HCPC (results.mcaTous, graph = FALSE, max = 3,nb.clust = 3)
+
+# Dendrogramme
+fviz_dend(results.hcpcTous, show_labels = FALSE)
+# Individus
+fviz_cluster(results.hcpcTous, geom = "point", main = "Factor map")
+```
+
+
+
+```{r}
+results.hcpcTous$desc.var$category
+```
+
+
+Essai de la même acm en retirant les individus appartenant à des modalités trop petites : 
+
+
+
+
+
+
+
+
+
+
+#########################################################################################################################################################
+
+
+Deuxième ACM.
+
+Variables (1a et 2a) : Activité actuelle, Filière, option
+
+Variables quali sup: Sexe, année diplôme 
+
+
+
+```{r}
+results.mcaActiviteFiliere<-MCA(na.omit(dataFinal[dataFinal[,38]!="Autre" & dataFinal[,38]!= "Autre (Erasmus,...)" ,c(2:5,38,39)]),quali.sup = c(1,2), ncp= 5)
+fviz_mca_biplot (results.mcaActiviteFiliere, repel = TRUE, geom ="point", col.ind = "blue", alpha.ind = "cos2", alpha.var = 0.4,
+               ggtheme = theme_minimal())
+
+
+```
+
+Plot des individus
+```{r}
+fviz_mca_ind(results.mcaActiviteFiliere, geom = "point",habillage = 2)
+```
+
+
+
+Plot des variables
+```{r}
+fviz_mca_var(results.mcaActiviteFiliere, geom = c("point","text"),invisible = "quali.sup", select.var = list(contrib=10),repel = T,col.var = "contrib",gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+#enlever les erasmus
+```
+
+
+Premiere valeur propre et coordonnées au carrés des modalités la dépassant 
+```{r}
+#valeur propre du premier axe :
+results.mcaActiviteFiliere$eig[1]
+
+#cordonnées au carré des modalités sur l'axe 1 dépassant sa valeur propre :
+sort(results.mcaActiviteFiliere$var$coord[results.mcaActiviteFiliere$var$coord[,1]^2 > results.mcaActiviteFiliere$eig[1],1]^2)
+
+
+```
+
+```{r}
+fviz_screeplot (results.mcaActiviteFiliere, addlabels = TRUE, ylim = c (0, 25))
+```
+
+
+
+HCPC sur la deuxième acm :
+
+```{r}
+
+results.hcpcActiviteFiliere <- HCPC (results.mcaActiviteFiliere, graph = FALSE, max = 3)
+
+# Dendrogramme
+fviz_dend(results.hcpcActiviteFiliere, show_labels = FALSE)
+# Individus
+fviz_cluster(results.hcpcActiviteFiliere, geom = "point", main = "Factor map")
+```
+
+
+
+```{r}
+results.hcpcActiviteFiliere$desc.var
+```
+
+
+
+
+
+
+
+
+#########################################################################################################################################################
+
+
+troisième ACM. Uniquement sur les individus ayant "en activité" en 1a. Uniquement sur les variables 1a. 
+
+Variables (1a) : Contrat Type, Cadre, Régime (temps plein/partiel), Entreprise taille, Secteur entrerpise, méthode embauche, satisfaction emploi, changer emploi, travail pays
+
+Variables quali sup: Sexe, année diplôme, Filière, option
+
+
+
+```{r}
+a<-na.omit(dataFinal[dataFinal[,4]=="En activité professionnelle" & dataFinal[,38]!="Autre" & dataFinal[,38]!= "Autre (Erasmus,...)" ,c(2,3,8,10,12,14,16,24,30,32,34,38,39)])
+a2<-na.omit(dataFinal[dataFinal[,4]=="En activité professionnelle" ,c(2,3,12,14,16,24,32,34,38,39)]) #sans cadre satisfaction et type contrat
+a3<-na.omit(dataFinal[dataFinal[,4]=="En activité professionnelle" & dataFinal[,38]!="Autre" & dataFinal[,38]!= "Autre (Erasmus,...)" ,c(2,3,14,16,38,39)])#taille entreprise, secteur, filière, option
+a4<-na.omit(dataFinal[dataFinal[,4]=="En activité professionnelle" ,c(2,3,8,10,12,14,16,24,30,32,34,38,39)])
+results.mca1aEnActivite<-MCA(a3,quali.sup = c(1,2), ncp= 5)
+fviz_mca_biplot (results.mca1aEnActivite, repel = TRUE, geom =c("point"), col.ind = "blue", alpha.ind = "cos2", alpha.var = 0.4,
+               ggtheme = theme_minimal())
+
+
+```
+
+Plot des individus
+```{r}
+fviz_mca_ind(results.mca1aEnActivite, geom = "text",habillage = 2)
+```
+
+
+
+Plot des variables
+```{r}
+fviz_mca_var(results.mca1aEnActivite, geom = c("point","text"),invisible = "quali.sup",col.var = "contrib",gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),select.var = list(contrib=10),xlim=c(-2,2),repel = T)
+```
+
+
+Premiere valeur propre et coordonnées au carrés des modalités la dépassant 
+```{r}
+#valeur propre du premier axe :
+results.mca1aEnActivite$eig[1]
+
+#cordonnées au carré des modalités sur l'axe 1 dépassant sa valeur propre :
+sort(results.mca1aEnActivite$var$coord[results.mca1aEnActivite$var$coord[,1]^2 > results.mca1aEnActivite$eig[1],1]^2)
+
+
+```
+
+```{r}
+fviz_screeplot (results.mca1aEnActivite, addlabels = TRUE, ylim = c (0, 25))
+```
+
+
+
+HCPC sur la troisième acm :
+
+```{r}
+
+results.hcpc1aEnActivite <- HCPC (results.mca1aEnActivite, graph = FALSE, max = 3)
+
+# Dendrogramme
+fviz_dend(results.hcpc1aEnActivite, show_labels = FALSE)
+# Individus
+fviz_cluster(results.hcpc1aEnActivite, geom = "point", main = "Factor map")
+```
+
+
+
+```{r}
+results.hcpc1aEnActivite$desc.var
+```
+
+
+
+
+
+
+#########################################################################################################################################################
+
+
+quatrième ACM. Uniquement sur les individus ayant "en activité" en 2a. Uniquement sur les variables 2a. 
+
+Variables (1a) : Contrat Type, Cadre, Régime (temps plein/partiel), Entreprise taille, Secteur entrerpise, méthode embauche, satisfaction emploi, changer emploi, travail pays
+
+Variables quali sup: Sexe, année diplôme, Filière, option
+
+
+
+```{r}
+b<-na.omit(dataFinal[dataFinal[,5]=="En activité professionnelle" ,c(2,3,9,11,13,15,17,25,31,33,35,38,39)])
+b2<-na.omit(dataFinal[dataFinal[,5]=="En activité professionnelle" ,c(2,3,13,15,17,25,33,35,38,39)])
+b3<-na.omit(dataFinal[dataFinal[,5]=="En activité professionnelle" & dataFinal[,38]!="Autre" & dataFinal[,38]!= "Autre (Erasmus,...)" ,c(2,3,15,17,38,39)])
+b4<-na.omit(dataFinal[dataFinal[,5]=="En activité professionnelle" ,c(2,3,9,11,13,15,17,25,31,33,35,38,39)])
+results.mca2aEnActivite<-MCA(b3,quali.sup = c(1,2), ncp= 5)
+fviz_mca_biplot (results.mca2aEnActivite, repel = TRUE, geom ="point", col.ind = "blue", alpha.ind = "cos2", alpha.var = 0.4,
+               ggtheme = theme_minimal())
+
+
+```
+
+Informations sur les individus de la quatrième acm
+```{r}
+table(b)
+```
+
+
+
+Plot des individus
+```{r}
+fviz_mca_ind(results.mca2aEnActivite, geom = "point",habillage = 2)
+```
+
+
+
+Plot des variables
+```{r}
+fviz_mca_var(results.mca2aEnActivite, geom = "point",invisible = "quali.sup")
+```
+
+
+Premiere valeur propre et coordonnées au carrés des modalités la dépassant 
+```{r}
+#valeur propre du premier axe :
+results.mca2aEnActivite$eig[1]
+
+#cordonnées au carré des modalités sur l'axe 1 dépassant sa valeur propre :
+sort(results.mca2aEnActivite$var$coord[results.mca2aEnActivite$var$coord[,1]^2 > results.mca2aEnActivite$eig[1],1]^2)
+
+
+```
+
+```{r}
+fviz_screeplot (results.mca2aEnActivite, addlabels = TRUE, ylim = c (0, 25))
+```
+
+
+
+HCPC sur la quatrième acm :
+
+```{r}
+
+results.mca2aEnActivite <- HCPC (results.mca2aEnActivite, graph = FALSE, max = 3)
+
+# Dendrogramme
+fviz_dend(results.mca2aEnActivite, show_labels = FALSE)
+# Individus
+fviz_cluster(results.mca2aEnActivite, geom = "point", main = "Factor map")
+```
+
+
+
+```{r}
+results.mca2aEnActivite$desc.var$category
+```
+
+
+
